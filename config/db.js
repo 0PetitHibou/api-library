@@ -2,7 +2,7 @@ import mysql from 'mysql2/promise';
 import bcrypt from 'bcrypt';
 
 
-const db = mysql.createPool({
+export const db = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: '', 
@@ -22,7 +22,7 @@ export async function createUser(firstName ,lastName, birthDate, mail, password)
   if( rows.length === 0){
     const hashedPassword = await bcrypt.hash(password, 10);
     const [result] = await db.query('INSERT INTO users(first_name, last_name, birth_date, mail, password) VALUES (?,?,?,?,?)',[firstName, lastName, birthDate, mail, hashedPassword])
-    console.log(result)
+
     return {
       id: result.insertId,
       first_name: firstName,

@@ -1,17 +1,21 @@
-
 // import bodyParser from 'body-parser';
 import express from 'express';
 import cors from 'cors';
-// session
 import session from "express-session";
-// --------------------------
-import {createUser} from "./config/db.js"
-
-
+import bcrypt from 'bcrypt';
+import {createUser, db} from "./config/db.js"
 
 const app = express();
+app.set("db", db);
+
+
 // Middleware
-app.use(cors());
+app.use(cors(
+  {
+    origin: "http://127.0.0.1:5501",
+    credentials: true
+  }
+));
 app.use(express.json());
 
 // Lancer le serveur
@@ -30,9 +34,15 @@ app.post("/users", async (req, res) => {
 
 
 app.use(session({
-    secret: 'secret',
-    resave: true,
-    saveUninitialized: true
+  secret: 'secret',
+  resave: true,
+  saveUninitialized: true,
+
+  cookie: {
+    httpOnly: true,
+    secure: false,
+    maxAge: 1000 * 60 * 60
+  }
 }));
 
 app.post("/login", async (req, res) => {
@@ -43,7 +53,7 @@ app.post("/login", async (req, res) => {
     }
 
     try {
-      const db = app.get("db")();
+      const db = app.get("db");
       const [rows] = await db.query('SELECT * FROM users WHERE mail = ?', [mail]);
 
       if (rows.length === 0) {
@@ -71,8 +81,16 @@ app.post("/login", async (req, res) => {
 })
 
 app.get("/session", (req, res) => {
-  res.json({
-    mail: req.session.mail,
-    isLogged: !!req.session.mail
-  });
+  if (req.session.user) {
+    res.json({
+      mail: req.session.user.mail,
+      isLogged: true
+    });
+  } else {
+    res.json({
+      mail: null,
+      isLogged: false
+    });
+  }
 });
+
