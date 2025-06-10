@@ -7,12 +7,13 @@ import {createUser, db} from "./config/db.js"
 
 const app = express();
 app.set("db", db);
+const CLIENT_ORIGIN = "http://127.0.0.1:5501";
 
 
 // Middleware
 app.use(cors(
   {
-    origin: "http://127.0.0.1:5501",
+    origin: CLIENT_ORIGIN,
     credentials: true
   }
 ));
@@ -31,8 +32,6 @@ app.post("/users", async (req, res) => {
   res.status(201).send(user);
 })
 
-
-
 app.use(session({
   secret: 'secret',
   resave: true,
@@ -46,33 +45,32 @@ app.use(session({
 }));
 
 app.post("/login", async (req, res) => {
-    const {mail, password} = req.body;
 
-    if (!mail || !password) {
-      return res.status(400).json({ message: "Champs manquants" });
-    }
+  const {mail, password} = req.body;
 
-    try {
-      const db = app.get("db");
-      const [rows] = await db.query('SELECT * FROM users WHERE mail = ?', [mail]);
+  if (!mail || !password) {return res.status(400).json({ message: "Champs manquants" });}
 
-      if (rows.length === 0) {
-      return res.status(401).json({ error: "Utilisateur non trouvé." });
-    }
-    const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
+  try {
+    const db = app.get("db");
+    const [rows] = await db.query('SELECT * FROM users WHERE mail = ?', [mail]);
 
-    if (!isMatch) {
-      return res.status(401).json({ error: "Mot de passe incorrect." });
-    }
+    if (rows.length === 0) {return res.status(401).json({ error: "Utilisateur non trouvé." });
+  }
 
-    req.session.user = {
-      id: user.id,
-      mail: user.mail,
-      first_name: user.first_name,
-      last_name: user.last_name
-    };
-    res.status(200).json({ message: "Connexion réussie." });
+  const user = rows[0];
+  const isMatch = await bcrypt.compare(password, user.password);
+
+  if (!isMatch) {return res.status(401).json({ error: "Mot de passe incorrect." });}
+
+  req.session.user = {
+    id: user.id,
+    mail: user.mail,
+    first_name: user.first_name,
+    last_name: user.last_name
+  };
+
+  res.status(200).json({ message: "Connexion réussie." });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Une erreur est survenue." });
@@ -81,6 +79,7 @@ app.post("/login", async (req, res) => {
 })
 
 app.get("/session", (req, res) => {
+
   if (req.session.user) {
     res.json({
       mail: req.session.user.mail,
@@ -92,5 +91,6 @@ app.get("/session", (req, res) => {
       isLogged: false
     });
   }
+
 });
 
