@@ -30,6 +30,7 @@ export async function createUser(firstName ,lastName, birthDate, mail, password)
       birth_date: birthDate,
       mail: mail
     }
+    
   } else {
     return 'email déjà existant';
   }
