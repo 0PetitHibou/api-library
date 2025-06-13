@@ -13,6 +13,23 @@ app.set("db", db);
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Création de Middleware
+function checkToken(req, res, next) {
+	if(!req.headers.authorization) return res.status(401).send("Unauthorized"); 
+
+	// verifier le token en décriptant le token via la clé
+	jwt.verify(req.headers.authorization, process.env.JWT_SECRET, (err, decoded) => {
+		if(err) return res.status(401).send("Unauthorized");
+		req.user = {
+			id: decoded.id,
+			mail: decoded.mail
+		}
+	});
+	// appel d'un endpoint ou middleware
+	// Middleware : action qu'on fait avant endpoint
+	// endpoint :  dernier action que ta requete fait
+	next()
+}
 
 // Lancer le serveur
 const PORT = 3000;
@@ -71,24 +88,11 @@ app.post("/login", async (req, res) => {
 	}
 });
 
-// Création de Middleware
-function checkToken(req, res, next) {
-	if(!req.headers.authorization) return res.status(401).send("Unauthorized"); 
 
-	// verifier le token en décriptant le token via la clé
-	jwt.verify(req.headers.authorization, process.env.JWT_SECRET, (err, decoded) => {
-		if(err) return res.status(401).send("Unauthorized");
-		req.user = {
-			id: decoded.id,
-			mail: decoded.mail
-		}
-	});
 
-	next()
-}
 
 app.get("/account" , checkToken, async (req, res) => {
 
-	res.send("account");
+	res.send({"account": req.user});
 });
 
