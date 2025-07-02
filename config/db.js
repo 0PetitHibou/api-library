@@ -23,15 +23,35 @@ export async function createUser(firstName ,lastName, birthDate, mail, password)
     const hashedPassword = await bcrypt.hash(password, 10);
     const [result] = await db.query('INSERT INTO users(first_name, last_name, birth_date, mail, password) VALUES (?,?,?,?,?)',[firstName, lastName, birthDate, mail, hashedPassword])
 
-    return {
-      id: result.insertId,
-      first_name: firstName,
-      last_name: lastName,
-      birth_date: birthDate,
-      mail: mail
-    }
+    return 'success Utilisateur créé';
     
   } else {
-    return 'email déjà existant';
+    return 'error email déjà existant';
   }
-} 
+}
+
+export async function addBook(cover, title, author, publish_year)
+{
+
+  const [rows] = await db.query('INSERT INTO books(cover, title, author, publish_year) VALUES (?,?,?,?)',[cover, title, author, publish_year])
+  return {
+    id: rows.insertId,
+    cover: cover,
+    title: title,
+    author: author,
+    publish_year: publish_year
+  }
+
+}
+
+export async function getBook(id)
+{
+  const [rows] = await db.query('SELECT * FROM books WHERE id = ?', [id])
+  return rows[0]
+}
+
+export async function getBooks()
+{
+  const [rows] = await db.query('SELECT * FROM books')
+  return rows
+}

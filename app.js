@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import  jwt  from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import {createUser, db} from "./config/db.js"
+import {createUser, db, addBook, getBooks} from "./config/db.js"
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -41,8 +41,25 @@ app.listen(PORT, () => {
 // Ajouter un utilisateur
 app.post("/users", async (req, res) => {
 	const { first_name, last_name, birth_date, mail, password } = req.body;
-	const user = await createUser(first_name, last_name, birth_date, mail, password);
-	res.status(201).send(user);
+	const response = await createUser(first_name, last_name, birth_date, mail, password);
+	const status = response.split(" ")[0];
+
+	if (status === "error") {
+		return res.status(400).send(response);
+	}
+	res.status(201).send("inscription effectuée");
+})
+
+app.post("/books", async (req, res) => {
+	console.log(req.body);
+	const { cover, title, author, publish_year } = req.body;
+	const book = await addBook(cover, title, author, publish_year);
+	res.status(201).send(book);
+})
+
+app.get("/books", async (req, res) => {
+	const rows = await getBooks();
+	res.status(200).send(rows);
 })
 
 app.post("/login", async (req, res) => {
