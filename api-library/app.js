@@ -85,7 +85,7 @@ app.post("/login", async (req, res) => {
 		if (!isMatch) {
 		return res.status(401).json({ error: "Mot de passe incorrect." });
 		}
-		
+		console.log("JWT", process.env.JWT_SECRET)
 		const token = jwt.sign({ id: user.id, mail:user.mail }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
 
