@@ -40,8 +40,9 @@ app.listen(PORT, () => {
 
 // Ajouter un utilisateur
 app.post("/users", async (req, res) => {
-	const { first_name, last_name, birth_date, mail, password } = req.body;
-	const response = await createUser(first_name, last_name, birth_date, mail, password);
+
+	const { firstName, lastName, mail, password } = req.body;
+	const response = await createUser(firstName, lastName, mail, password);
 	const status = response.split(" ")[0];
 
 	if (status === "error") {
