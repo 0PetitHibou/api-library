@@ -13,22 +13,30 @@ app.set("db", db);
 // Middleware
 app.use(cors());
 app.use(express.json());
+
 // Création de Middleware
 function checkToken(req, res, next) {
-	if(!req.headers.authorization) return res.status(401).send("Unauthorized"); 
+
+	const authHeader = req.headers.authorization
+	if(!authHeader) return res.status(401).send("Unauthorized"); 
+
+	const token = authHeader.split(" ")[1]
 
 	// verifier le token en décriptant le token via la clé
-	jwt.verify(req.headers.authorization, process.env.JWT_SECRET, (err, decoded) => {
+	jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
 		if(err) return res.status(401).send("Unauthorized");
+
 		req.user = {
 			id: decoded.id,
 			mail: decoded.mail
 		}
+		// appel d'un endpoint ou middleware
+		// Middleware : action qu'on fait avant endpoint
+		// endpoint :  dernier action que ta requete fait
+		console.log("deco. token", decoded)
+		next()
 	});
-	// appel d'un endpoint ou middleware
-	// Middleware : action qu'on fait avant endpoint
-	// endpoint :  dernier action que ta requete fait
-	next()
+
 }
 
 // Lancer le serveur
@@ -52,16 +60,17 @@ app.post("/users", async (req, res) => {
 })
 
 app.post("/books", async (req, res) => {
-	console.log(req.body);
 	const { cover, title, author, publish_year } = req.body;
 	const book = await addBook(cover, title, author, publish_year);
 	res.status(201).send(book);
 })
 
+
 app.get("/books", async (req, res) => {
 	const rows = await getBooks();
 	res.status(200).send(rows);
 })
+
 
 app.post("/login", async (req, res) => {
 
@@ -86,8 +95,12 @@ app.post("/login", async (req, res) => {
 		return res.status(401).json({ error: "Mot de passe incorrect." });
 		}
 		console.log("JWT", process.env.JWT_SECRET)
-		const token = jwt.sign({ id: user.id, mail:user.mail }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
+		const token = jwt.sign({ id: user.id, mail:user.mail },
+			process.env.JWT_SECRET,
+			{ expiresIn: "1h" });
+
+		
 
 		res.status(200).json({ message: "Connexion réussie.",
 			user: {
@@ -100,6 +113,8 @@ app.post("/login", async (req, res) => {
 			token
 		 });
 
+		 console.log(user.id)
+
 	} catch (error) {
 	console.error(error);
 	res.status(500).json({ error: "Une erreur est survenue." });
@@ -107,10 +122,27 @@ app.post("/login", async (req, res) => {
 });
 
 
-
-
 app.get("/account" , checkToken, async (req, res) => {
 
 	res.send({"account": req.user});
 });
 
+app.put("/account" , checkToken, async (req, res) => {
+
+	const { mail } = req.body;
+	const userId = req.user.id;
+
+	console.log("mail", mail)
+	console.log("id", userId)
+
+	try {
+		const db = app.get("db")
+		await db.query("UPDATE users SET mail = ? WHERE id = ?", [mail, userId])
+		res.json({ message : "Email mis à jour"})
+		
+	} catch(error) {
+		console.error(error)
+		res.status(500).json({ error : "Erreur serveur"})
+	}
+
+})
