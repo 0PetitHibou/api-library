@@ -46,18 +46,42 @@ app.listen(PORT, () => {
 });
 
 
-// Ajouter un utilisateur
+
+
+
 app.post("/users", async (req, res) => {
+    const { firstName, lastName, mail, password } = req.body;
 
-	const { firstName, lastName, mail, password } = req.body;
-	const response = await createUser(firstName, lastName, mail, password);
-	const status = response.split(" ")[0];
+    try {
+        const response = await createUser(firstName, lastName, mail, password);
 
-	if (status === "error") {
-		return res.status(400).send(response);
-	}
-	res.status(201).send("inscription effectuée");
-})
+        if (response?.error) {
+            return res.status(400).json({ error: response.error });
+        }
+
+		const token = jwt.sign(
+			{ id: response.id, mail: response.mail },process.env.JWT_SECRET || "secret",{ expiresIn: "1h" }
+		)
+
+        res.status(201).json({ message: "Inscription effectuée",
+			token: token,
+			user: {
+                id: response.id,
+                first_name: response.first_name,
+                last_name: response.last_name,
+                mail: response.mail
+            }
+		 });
+
+
+    } catch (err) {
+        console.error("Erreur création utilisateur :", err);
+        res.status(500).json({ error: "Erreur serveur" });
+    }
+});
+
+
+
 
 app.post("/books", async (req, res) => {
 	const { cover, title, author, publish_year } = req.body;
@@ -146,3 +170,100 @@ app.put("/account" , checkToken, async (req, res) => {
 	}
 
 })
+
+app.post("/user/books", checkToken, async (req, res) => {
+	
+	const userId = req.user.id
+	const { bookApiId } = req.body
+
+	console.log("userId", userId)
+	console.log("bookId", bookApiId)
+
+	try {
+
+		const db = app.get("db")
+
+		await db.query(
+			"INSERT INTO user_books (user_id, book_api_id) VALUES (?, ?)", [userId, bookApiId]
+		);
+
+		res.status(200).json({ message : "Livre ajouté"})
+	} catch (error) {
+		console.log("erreur livre ajouté", error)
+		res.status(500).json({error : "Erreur serveur"})
+	}
+
+})
+
+app.get("/my-books", checkToken, async (req, res) => {
+	const userId = req.user.id
+
+	try {
+		const db = app.get("db")
+
+		const [rows] = await db.query(
+			"SELECT * FROM user_books WHERE user_id = ?", [userId]
+		);
+
+		res.status(201).json(rows)
+
+	} catch (error) {
+		console.log(error)
+		res.status(500).json({ error: "Erreur serveur - recup livre"})
+	}
+
+})
+
+app.get("/books/:id", async (req, res) => {
+    const bookId = req.params.id; // ex: "OL40226464W"
+
+    try {
+
+        const response = await fetch(`https://openlibrary.org/works/${bookId}.json`);
+        if (!response.ok) {
+            return res.status(404).json({ error: "Livre introuvable" });
+        }
+
+        const data = await response.json();
+
+        let authorName = "Auteur inconnu";
+        if (data.authors && data.authors.length > 0) {
+            try {
+                const authorRes = await fetch(`https://openlibrary.org${data.authors[0].author.key}.json`);
+                const authorData = await authorRes.json();
+                authorName = authorData.name;
+            } catch {}
+        }
+
+        res.json({
+            key: `/works/${bookId}`,
+            title: data.title,
+            cover_i: data.covers ? data.covers[0] : null,
+            author_name: [authorName],
+            first_publish_year: data.first_publish_year || "Inconnue"
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Erreur serveur" });
+    }
+});
+
+app.delete("/user/books/:bookApiId", checkToken, async (req, res) => {
+    const userId = req.user.id;
+    const { bookApiId } = req.params;
+	const bookIdFull =  `/works/${bookApiId}`
+	console.log("userid:", userId, "bookid", bookApiId)
+
+    try {
+        const db = app.get("db");
+        await db.query(
+            "DELETE FROM user_books WHERE user_id = ? AND book_api_id = ?",
+            [userId, bookIdFull]
+        );
+
+        res.status(200).json({ message: "Livre supprimé" });
+    } catch (error) {
+        console.log("Erreur suppression livre :", error);
+        res.status(500).json({ error: "Erreur serveur" });
+    }
+});
